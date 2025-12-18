@@ -1,0 +1,22 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# Editor settings
+.vscode/
+
+# Runtime / generated folders
+downloads/
+temp/
+logs/
+uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
