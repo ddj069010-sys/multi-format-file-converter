@@ -17,7 +17,7 @@ It supports images, documents, archives and audio/video files.
 - Uvicorn  
 - Pillow, python-docx, py7zr, FFmpeg, Pandoc.
 - <br>
--And also you can run it locally by cloning the code and get universal format chanhing app running locally.
+- And also you can run it locally by cloning the code and get universal format chanhing app running locally.
 ## How to run
 
 # 1. Clone this repository
