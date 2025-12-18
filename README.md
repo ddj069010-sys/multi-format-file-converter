@@ -8,7 +8,6 @@ It supports images, documents, archives and audio/video files.
 - Image conversion (JPG, PNG, WebP, BMP, TIFF, GIF, ICO).  
 - Document conversion using Pandoc (PDF, DOCX, ODT, TXT, HTML, RTF).  
 - Archive conversion (ZIP, TAR, 7Z, RAR).
-- <br>
 - Audio and video conversion using FFmpeg (MP3, WAV, AAC, OGG, MP4, MKV, WEBM, etc.). 
 
 ## Tech stack
@@ -17,6 +16,7 @@ It supports images, documents, archives and audio/video files.
 - FastAPI  
 - Uvicorn  
 - Pillow, python-docx, py7zr, FFmpeg, Pandoc.
+- <br>
 -And also you can run it locally by cloning the code and get universal format chanhing app running locally.
 ## How to run
 
