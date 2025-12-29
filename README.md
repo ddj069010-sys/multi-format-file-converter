@@ -215,10 +215,3 @@ DocFormatting/
 └── logs/              # Log files (created automatically)
 ```
 
-## License
-
-[Add your license here]
-
-## Contributing
-
-[Add contribution guidelines here]
