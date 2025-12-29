@@ -1,22 +1,42 @@
-# Python cache
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Virtual environments
-.venv/
+*.py[cod]
+*$py.class
+*.so
+.Python
 venv/
+env/
+ENV/
+.venv
 
-# Editor settings
-.vscode/
-
-# Runtime / generated folders
+# Directories
+uploads/
 downloads/
 temp/
 logs/
-uploads/
+*.log
 
-# OS files
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
 Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Distribution
+dist/
+build/
+*.egg-info/

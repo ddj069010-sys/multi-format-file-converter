@@ -58,6 +58,31 @@
             box-shadow: var(--shadow);
         }
 
+        .header-tabs {
+            display: flex;
+            gap: 10px;
+            margin-left: 20px;
+        }
+
+        .header-tab {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .header-tab:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .header-tab.active {
+            background: rgba(255,255,255,0.4);
+        }
+
         h1 {
             font-size: 28px;
             display: flex;
@@ -485,14 +510,23 @@
     <div class="container">
         <header>
             <h1>🗜️ File Compression Suite</h1>
-            <div class="header-controls">
-                <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="header-tabs">
+                    <button class="header-tab active" onclick="showTab('compress')" id="tab-compress">Compress</button>
+                    <button class="header-tab" onclick="showTab('convert-image')" id="tab-convert-image">Convert Image</button>
+                    <button class="header-tab" onclick="showTab('resize')" id="tab-resize">Resize</button>
+                    <button class="header-tab" onclick="showTab('merge-pdf')" id="tab-merge-pdf">Merge PDF</button>
+                    <button class="header-tab" onclick="showTab('history')" id="tab-history">History</button>
+                </div>
+                <div class="header-controls">
+                    <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+                </div>
             </div>
         </header>
 
         <div id="error" class="error"></div>
 
-        <div class="main-content">
+        <div class="main-content" id="compressContent">
             <!-- Upload Section -->
             <div class="upload-section">
                 <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
@@ -567,8 +601,8 @@
                 </div>
 
                 <div class="setting-group">
-                    <label class="setting-label">Max File Size (MB)</label>
-                    <input type="number" id="maxSize" value="500" min="1" max="5000">
+                    <label class="setting-label">Max File Size</label>
+                    <div class="setting-description" id="maxSizeInfo">Loading...</div>
                 </div>
 
                 <div class="action-buttons">
@@ -603,15 +637,147 @@
             </div>
             <div id="resultList" style="margin-top: 20px;"></div>
         </div>
+
+        <!-- Convert Image Format Section -->
+        <div class="main-content" id="convertImageContent" style="display: none;">
+            <div class="upload-section">
+                <div class="drop-zone" id="convertImageDropZone" onclick="document.getElementById('convertImageFileInput').click()">
+                    <div class="drop-zone-title">📁 Drop Image Here</div>
+                    <p>or click to browse</p>
+                    <p style="font-size: 12px; margin-top: 10px;">Supports: JPG, PNG, GIF, WebP, BMP, TIFF, ICO</p>
+                </div>
+                <input type="file" id="convertImageFileInput" accept="image/*" onchange="handleConvertImageFileSelect(event)">
+                <div class="file-list" id="convertImageFileList"></div>
+            </div>
+            <div class="settings-section">
+                <div class="setting-group">
+                    <label class="setting-label">Target Format</label>
+                    <div class="setting-description">Choose the output image format</div>
+                    <select id="convertImageFormat" onchange="updateFormatInfo()">
+                        <optgroup label="Recommended for Photos">
+                            <option value="jpg">JPEG (.jpg) - Best for photos, small size</option>
+                            <option value="webp">WebP (.webp) - Modern, excellent compression</option>
+                        </optgroup>
+                        <optgroup label="Recommended for Graphics">
+                            <option value="png">PNG (.png) - Supports transparency</option>
+                        </optgroup>
+                        <optgroup label="Other Formats">
+                            <option value="bmp">BMP (.bmp) - Uncompressed, large size</option>
+                            <option value="gif">GIF (.gif) - Supports animation</option>
+                            <option value="tiff">TIFF (.tiff) - High quality, preserves detail</option>
+                            <option value="ico">ICO (.ico) - Windows icon format</option>
+                        </optgroup>
+                    </select>
+                    <div id="formatInfo" style="margin-top: 10px; padding: 10px; background: rgba(33, 150, 243, 0.1); border-radius: 4px; font-size: 12px; display: none;">
+                        <strong>Format Info:</strong>
+                        <div id="formatInfoText"></div>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">Quality (for lossy formats)</label>
+                    <div class="setting-description">Higher = Better quality, Larger file size</div>
+                    <div style="display: flex; align-items: center;">
+                        <input type="range" id="convertImageQuality" min="30" max="100" value="80" oninput="updateConvertImageQuality(this.value)">
+                        <span class="range-value"><span id="convertImageQualityValue">80</span>%</span>
+                    </div>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn-primary" onclick="convertImageFormat()">🔄 Convert Format</button>
+                    <button class="btn-secondary" onclick="clearConvertImage()">🗑️ Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resize Image Section -->
+        <div class="main-content" id="resizeContent" style="display: none;">
+            <div class="upload-section">
+                <div class="drop-zone" id="resizeDropZone" onclick="document.getElementById('resizeFileInput').click()">
+                    <div class="drop-zone-title">📁 Drop Image Here</div>
+                    <p>or click to browse</p>
+                    <p style="font-size: 12px; margin-top: 10px;">Supports: JPG, PNG, GIF, WebP, BMP, TIFF</p>
+                </div>
+                <input type="file" id="resizeFileInput" accept="image/*" onchange="handleResizeFileSelect(event)">
+                <div class="file-list" id="resizeFileList"></div>
+            </div>
+            <div class="settings-section">
+                <div class="setting-group">
+                    <label class="setting-label">Width (pixels)</label>
+                    <input type="number" id="resizeWidth" min="1" max="10000" placeholder="e.g., 1920">
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">Height (pixels)</label>
+                    <input type="number" id="resizeHeight" min="1" max="10000" placeholder="e.g., 1080">
+                </div>
+                <div class="setting-group">
+                    <label class="setting-label">
+                        <input type="checkbox" id="maintainAspect" checked style="width: auto; margin-right: 8px;">
+                        Maintain Aspect Ratio
+                    </label>
+                </div>
+                <div class="action-buttons">
+                    <button class="btn-primary" onclick="resizeImage()">🖼️ Resize Image</button>
+                    <button class="btn-secondary" onclick="clearResize()">🗑️ Clear</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Merge PDF Section -->
+        <div class="main-content" id="mergePdfContent" style="display: none;">
+            <div class="upload-section" style="grid-column: span 2;">
+                <div class="drop-zone" id="mergePdfDropZone" onclick="document.getElementById('mergePdfFileInput').click()">
+                    <div class="drop-zone-title">📁 Drop PDF Files Here</div>
+                    <p>or click to browse (select multiple PDFs)</p>
+                    <p style="font-size: 12px; margin-top: 10px;">At least 2 PDF files required</p>
+                </div>
+                <input type="file" id="mergePdfFileInput" accept=".pdf" multiple onchange="handleMergePdfFileSelect(event)">
+                <div class="file-list" id="mergePdfFileList"></div>
+            </div>
+            <div class="settings-section" style="grid-column: span 2;">
+                <div class="action-buttons">
+                    <button class="btn-primary" onclick="mergePdfs()">📄 Merge PDFs</button>
+                    <button class="btn-secondary" onclick="clearMergePdf()">🗑️ Clear All</button>
+                </div>
+                <p style="margin-top: 20px; font-size: 14px; color: var(--text-dark); opacity: 0.7;">
+                    Files will be merged in the order they are listed. Use the remove button to reorder.
+                </p>
+            </div>
+        </div>
+
+        <!-- Image Compress Preset Section (hidden, can be added to compress tab) -->
+        <div class="settings-section" id="presetCompressSection" style="display: none;">
+            <div class="setting-group">
+                <label class="setting-label">Compression Preset</label>
+                <select id="compressPreset">
+                    <option value="low">Low Quality (Smaller Size)</option>
+                    <option value="medium" selected>Medium Quality (Balanced)</option>
+                    <option value="high">High Quality (Larger Size)</option>
+                    <option value="ultra">Ultra Quality (Best Quality)</option>
+                </select>
+            </div>
+            <div class="action-buttons">
+                <button class="btn-primary" onclick="compressImagePreset()">🗜️ Compress with Preset</button>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div class="results-section" id="historySection" style="display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>📋 Download History</h2>
+                <button class="btn-secondary" onclick="loadHistory()">🔄 Refresh</button>
+            </div>
+            <div id="historyList"></div>
+        </div>
     </div>
 
     <script>
         let files = [];
         let compressionSettings = {
             quality: 80,
-            format: '',
-            maxSize: 500
+            format: ''
         };
+        let resizeFile = null;
+        let mergePdfFiles = [];
+        let convertImageFile = null;
 
         // API Base URL
         const API_BASE = 'http://127.0.0.1:8000';
@@ -626,12 +792,94 @@
             document.querySelector('.theme-toggle').textContent = newTheme === 'light' ? '🌙' : '☀️';
         }
 
+        function showTab(tab) {
+            const compressContent = document.getElementById('compressContent');
+            const convertImageContent = document.getElementById('convertImageContent');
+            const resizeContent = document.getElementById('resizeContent');
+            const mergePdfContent = document.getElementById('mergePdfContent');
+            const progressSection = document.getElementById('progressSection');
+            const resultsSection = document.getElementById('resultsSection');
+            const historySection = document.getElementById('historySection');
+            
+            const compressTab = document.getElementById('tab-compress');
+            const convertImageTab = document.getElementById('tab-convert-image');
+            const resizeTab = document.getElementById('tab-resize');
+            const mergePdfTab = document.getElementById('tab-merge-pdf');
+            const historyTab = document.getElementById('tab-history');
+            
+            // Hide all sections
+            compressContent.style.display = 'none';
+            if (convertImageContent) convertImageContent.style.display = 'none';
+            if (resizeContent) resizeContent.style.display = 'none';
+            if (mergePdfContent) mergePdfContent.style.display = 'none';
+            progressSection.style.display = 'none';
+            resultsSection.style.display = 'none';
+            historySection.style.display = 'none';
+            
+            // Remove active from all tabs
+            compressTab.classList.remove('active');
+            if (convertImageTab) convertImageTab.classList.remove('active');
+            if (resizeTab) resizeTab.classList.remove('active');
+            if (mergePdfTab) mergePdfTab.classList.remove('active');
+            historyTab.classList.remove('active');
+            
+            if (tab === 'compress') {
+                compressContent.style.display = 'grid';
+                if (progressSection.classList.contains('active')) progressSection.style.display = 'block';
+                if (resultsSection.classList.contains('active')) resultsSection.style.display = 'block';
+                compressTab.classList.add('active');
+            } else if (tab === 'convert-image' && convertImageContent) {
+                convertImageContent.style.display = 'grid';
+                if (convertImageTab) convertImageTab.classList.add('active');
+                updateFormatInfo();
+            } else if (tab === 'resize' && resizeContent) {
+                resizeContent.style.display = 'grid';
+                if (resizeTab) resizeTab.classList.add('active');
+            } else if (tab === 'merge-pdf' && mergePdfContent) {
+                mergePdfContent.style.display = 'grid';
+                if (mergePdfTab) mergePdfTab.classList.add('active');
+            } else if (tab === 'history') {
+                historySection.style.display = 'block';
+                historyTab.classList.add('active');
+                loadHistory();
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const response = await fetch(`${API_BASE}/api/history`);
+                const data = await response.json();
+                const historyList = document.getElementById('historyList');
+                
+                if (data.success && data.files.length > 0) {
+                    historyList.innerHTML = data.files.map(file => `
+                        <div class="result-item">
+                            <div>
+                                <div class="result-name">📄 ${file.name}</div>
+                                <div class="result-stats">
+                                    ${file.size_formatted || (file.size_mb + ' MB')} | ${file.file_type} | ${new Date(file.created).toLocaleString()}
+                                </div>
+                            </div>
+                            <a href="${API_BASE}${file.download_url}" download class="download-btn">⬇️ Download</a>
+                        </div>
+                    `).join('');
+                } else {
+                    historyList.innerHTML = '<p style="text-align: center; padding: 20px; color: var(--text-dark); opacity: 0.7;">No files in history</p>';
+                }
+            } catch (e) {
+                console.error('Failed to load history:', e);
+                showError('Failed to load download history');
+            }
+        }
+
         // Load saved theme
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
             const savedTheme = localStorage.getItem('theme') || 'light';
             document.documentElement.setAttribute('data-theme', savedTheme);
             document.querySelector('.theme-toggle').textContent = savedTheme === 'light' ? '🌙' : '☀️';
-            checkServerHealth();
+            await checkServerHealth();
+            await loadSupportedFormats();
+            await loadMaxFileSize();
         });
 
         // Check server health
@@ -667,8 +915,80 @@
             handleFiles(event.target.files);
         }
 
+        let maxFileSizeMB = 500;
+        let supportedFormats = {};
+
+        async function loadSupportedFormats() {
+            try {
+                const response = await fetch(`${API_BASE}/api/formats`);
+                const data = await response.json();
+                if (data.success) {
+                    supportedFormats = data.formats;
+                    updateFormatDropdown(data.capabilities);
+                }
+            } catch (e) {
+                console.error('Failed to load supported formats:', e);
+            }
+        }
+
+        async function loadMaxFileSize() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                const data = await response.json();
+                if (data.success && data.capabilities) {
+                    maxFileSizeMB = data.capabilities.max_file_size_mb || 500;
+                    const maxSizeInfo = document.getElementById('maxSizeInfo');
+                    if (maxSizeInfo) {
+                        maxSizeInfo.textContent = `Maximum file size: ${maxFileSizeMB}MB`;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load max file size:', e);
+                const maxSizeInfo = document.getElementById('maxSizeInfo');
+                if (maxSizeInfo) {
+                    maxSizeInfo.textContent = 'Maximum file size: 500MB (default)';
+                }
+            }
+        }
+
+        function updateFormatDropdown(capabilities) {
+            const formatSelect = document.getElementById('format');
+            const optgroups = formatSelect.querySelectorAll('optgroup');
+            
+            optgroups.forEach(group => {
+                const label = group.label.toLowerCase();
+                let available = false;
+                
+                if (label.includes('image')) {
+                    available = capabilities.images !== false;
+                } else if (label.includes('document')) {
+                    available = capabilities.documents !== false;
+                } else if (label.includes('archive')) {
+                    available = capabilities.archives !== false;
+                } else if (label.includes('audio') || label.includes('video')) {
+                    available = capabilities.media !== false;
+                } else {
+                    available = true; // Default to available for spreadsheets, presentations
+                }
+                
+                if (!available) {
+                    group.style.display = 'none';
+                }
+            });
+        }
+
         function handleFiles(newFiles) {
+            const maxSizeBytes = maxFileSizeMB * 1024 * 1024;
+            let hasError = false;
+            
             for (let file of newFiles) {
+                // Client-side file size validation
+                if (file.size > maxSizeBytes) {
+                    showError(`File "${file.name}" exceeds maximum size of ${maxFileSizeMB}MB`);
+                    hasError = true;
+                    continue;
+                }
+                
                 files.push({
                     name: file.name,
                     size: file.size,
@@ -677,7 +997,10 @@
                     id: Math.random().toString(36).substr(2, 9)
                 });
             }
-            displayFileList();
+            
+            if (!hasError) {
+                displayFileList();
+            }
         }
 
         function displayFileList() {
@@ -779,22 +1102,28 @@
                         body: formData
                     });
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
+                    let data;
+                    try {
+                        data = await response.json();
+                    } catch (e) {
+                        throw new Error('Invalid response from server');
                     }
 
-                    const data = await response.json();
+                    if (!response.ok) {
+                        const errorMsg = data?.error || data?.detail || `HTTP error! status: ${response.status}`;
+                        throw new Error(errorMsg);
+                    }
 
                     if (data.success) {
                         results.push({
                             name: file.name,
                             originalSize: data.original_size,
                             compressedSize: data.compressed_size,
-                            reduction: data.compression_ratio,
+                            reduction: data.compression_ratio || 0,
                             downloadUrl: data.download_url
                         });
 
-                        totalReduction += data.compression_ratio;
+                        totalReduction += data.compression_ratio || 0;
 
                         // Update progress bar
                         const progressBar = document.querySelector(`#progress-${file.id} .progress-bar`);
@@ -804,16 +1133,21 @@
 
                         const progressText = document.querySelector(`#progress-${file.id} .progress-text`);
                         if (progressText) {
-                            progressText.textContent = `Completed (${data.compression_ratio.toFixed(1)}% reduction)`;
+                            const reduction = data.compression_ratio || 0;
+                            progressText.textContent = `Completed (${reduction.toFixed(1)}% reduction)`;
                         }
+                    } else {
+                        throw new Error(data.error || 'Compression failed');
                     }
                 } catch (error) {
                     console.error(`Error compressing ${file.name}:`, error);
-                    showError(`Failed to compress ${file.name}: ${error.message}`);
+                    const errorMsg = error.message || 'Unknown error occurred';
+                    showError(`Failed to compress ${file.name}: ${errorMsg}`);
 
                     const progressText = document.querySelector(`#progress-${file.id} .progress-text`);
                     if (progressText) {
                         progressText.textContent = 'Failed';
+                        progressText.style.color = 'var(--danger)';
                     }
                 }
 
@@ -821,9 +1155,13 @@
             }
 
             // Show results
-            if (completedFiles > 0) {
+            if (results.length > 0) {
                 const processingTime = (Date.now() - startTime) / 1000;
-                showResults(results, totalReduction / completedFiles, processingTime);
+                const avgReduction = results.length > 0 ? totalReduction / results.length : 0;
+                showResults(results, avgReduction, processingTime);
+            } else {
+                progressSection.classList.remove('active');
+                showError('No files were successfully processed');
             }
         }
 
@@ -857,6 +1195,610 @@
 
             resultsSection.classList.add('active');
             showSuccess('✅ All files compressed successfully!');
+        }
+
+        // Convert Image Format Functions
+        function handleConvertImageFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                convertImageFile = {
+                    name: file.name,
+                    size: file.size,
+                    file: file,
+                    id: Math.random().toString(36).substr(2, 9)
+                };
+                displayConvertImageFile();
+            }
+        }
+
+        function displayConvertImageFile() {
+            const fileList = document.getElementById('convertImageFileList');
+            if (!convertImageFile) {
+                fileList.innerHTML = '';
+                return;
+            }
+            const sizeInMB = (convertImageFile.size / (1024 * 1024)).toFixed(2);
+            fileList.innerHTML = `
+                <div class="file-item">
+                    <div class="file-name">
+                        <div class="file-name-text">🖼️ ${convertImageFile.name}</div>
+                        <div class="file-size">${sizeInMB} MB</div>
+                    </div>
+                    <button class="remove-btn" onclick="clearConvertImage()">Remove</button>
+                </div>
+            `;
+        }
+
+        function clearConvertImage() {
+            convertImageFile = null;
+            document.getElementById('convertImageFileInput').value = '';
+            document.getElementById('convertImageFileList').innerHTML = '';
+        }
+
+        function updateConvertImageQuality(value) {
+            document.getElementById('convertImageQualityValue').textContent = value;
+        }
+
+        async function convertImageFormat() {
+            if (!convertImageFile) {
+                showError('Please select an image file');
+                return;
+            }
+
+            const targetFormat = document.getElementById('convertImageFormat').value;
+            const quality = parseInt(document.getElementById('convertImageQuality').value);
+
+            try {
+                const formData = new FormData();
+                formData.append('file', convertImageFile.file);
+                formData.append('target_format', targetFormat);
+                formData.append('quality', quality);
+
+                const progressSection = document.getElementById('progressSection');
+                progressSection.classList.add('active');
+                progressSection.style.display = 'block';
+                document.getElementById('progressList').innerHTML = `
+                    <div class="progress-item">
+                        <div class="progress-filename">🖼️ Converting ${convertImageFile.name} to ${targetFormat.toUpperCase()}...</div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar" style="width: 100%;"></div>
+                        </div>
+                        <div class="progress-text">Processing...</div>
+                    </div>
+                `;
+
+                const response = await fetch(`${API_BASE}/api/convert-image-format`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || data.detail || 'Conversion failed');
+                }
+
+                if (data.success) {
+                    progressSection.classList.remove('active');
+                    const resultsSection = document.getElementById('resultsSection');
+                    const resultList = document.getElementById('resultList');
+                    
+                    const formatInfo = data.format_info || {};
+                    const infoText = formatInfo.description ? `<br><small style="opacity: 0.7;">${formatInfo.description}</small>` : '';
+                    
+                    resultList.innerHTML = `
+                        <div class="result-item">
+                            <div>
+                                <div class="result-name">🖼️ ${convertImageFile.name} → ${data.target_format}</div>
+                                <div class="result-stats">
+                                    ${formatFileSize(data.original_size)} → ${formatFileSize(data.converted_size)} | 
+                                    ${data.compression_ratio >= 0 ? 'Reduced by ' + data.compression_ratio.toFixed(1) + '%' : 'Size increased by ' + Math.abs(data.compression_ratio).toFixed(1) + '%'}
+                                    ${infoText}
+                                </div>
+                            </div>
+                            <a href="${API_BASE}${data.download_url}" download class="download-btn">⬇️ Download</a>
+                        </div>
+                    `;
+                    resultsSection.classList.add('active');
+                    showSuccess(`✅ Image converted to ${data.target_format} successfully!`);
+                    clearConvertImage();
+                }
+            } catch (error) {
+                document.getElementById('progressSection').classList.remove('active');
+                showError(`Failed to convert image: ${error.message}`);
+            }
+        }
+
+        const formatInfoMap = {
+            'jpg': { name: 'JPEG', description: 'Best for photos and images with many colors. Lossy compression provides small file sizes. Not suitable for images with text or transparency.', useCase: 'Photos, web images, sharing', lossy: true },
+            'jpeg': { name: 'JPEG', description: 'Best for photos and images with many colors. Lossy compression provides small file sizes. Not suitable for images with text or transparency.', useCase: 'Photos, web images, sharing', lossy: true },
+            'png': { name: 'PNG', description: 'Lossless format perfect for graphics, logos, and images requiring transparency. Larger file sizes than JPEG. Preserves all image data.', useCase: 'Graphics, logos, screenshots, images with transparency', lossy: false },
+            'webp': { name: 'WebP', description: 'Modern format developed by Google. Provides 25-35% better compression than JPEG while maintaining quality. Supports transparency. Best choice for web.', useCase: 'Web images, modern applications', lossy: true },
+            'bmp': { name: 'BMP', description: 'Uncompressed bitmap format. Very large file sizes but preserves all image data exactly. Rarely used in modern applications.', useCase: 'Legacy systems, archival (rare)', lossy: false },
+            'gif': { name: 'GIF', description: 'Supports animation and transparency. Limited to 256 colors. Good for simple graphics and animated images. Not ideal for photos.', useCase: 'Simple graphics, animations, memes', lossy: true },
+            'tiff': { name: 'TIFF', description: 'High-quality format used in professional photography and printing. Supports layers and various compression methods. Large file sizes.', useCase: 'Professional photography, printing, archival', lossy: false },
+            'tif': { name: 'TIFF', description: 'High-quality format used in professional photography and printing. Supports layers and various compression methods. Large file sizes.', useCase: 'Professional photography, printing, archival', lossy: false },
+            'ico': { name: 'ICO', description: 'Windows icon format. Supports multiple sizes in one file. Used for application icons and favicons.', useCase: 'Icons, favicons, Windows applications', lossy: false }
+        };
+
+        function updateFormatInfo() {
+            const format = document.getElementById('convertImageFormat').value;
+            const info = formatInfoMap[format] || {};
+            const infoDiv = document.getElementById('formatInfo');
+            const infoText = document.getElementById('formatInfoText');
+            
+            if (info.name) {
+                infoDiv.style.display = 'block';
+                infoText.innerHTML = `
+                    <strong>${info.name}</strong><br>
+                    ${info.description}<br>
+                    <strong>Best for:</strong> ${info.useCase}<br>
+                    <strong>Compression:</strong> ${info.lossy ? 'Lossy (quality affects file size)' : 'Lossless (no quality loss)'}
+                `;
+            } else {
+                infoDiv.style.display = 'none';
+            }
+        }
+
+        // Convert Image Format Functions
+        function handleConvertImageFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                convertImageFile = {
+                    name: file.name,
+                    size: file.size,
+                    file: file,
+                    id: Math.random().toString(36).substr(2, 9)
+                };
+                displayConvertImageFile();
+            }
+        }
+
+        function displayConvertImageFile() {
+            const fileList = document.getElementById('convertImageFileList');
+            if (!convertImageFile) {
+                fileList.innerHTML = '';
+                return;
+            }
+            const sizeInMB = (convertImageFile.size / (1024 * 1024)).toFixed(2);
+            fileList.innerHTML = `
+                <div class="file-item">
+                    <div class="file-name">
+                        <div class="file-name-text">🖼️ ${convertImageFile.name}</div>
+                        <div class="file-size">${sizeInMB} MB</div>
+                    </div>
+                    <button class="remove-btn" onclick="clearConvertImage()">Remove</button>
+                </div>
+            `;
+        }
+
+        function clearConvertImage() {
+            convertImageFile = null;
+            document.getElementById('convertImageFileInput').value = '';
+            document.getElementById('convertImageFileList').innerHTML = '';
+        }
+
+        function updateConvertImageQuality(value) {
+            document.getElementById('convertImageQualityValue').textContent = value;
+        }
+
+        async function convertImageFormat() {
+            if (!convertImageFile) {
+                showError('Please select an image file');
+                return;
+            }
+
+            const targetFormat = document.getElementById('convertImageFormat').value;
+            const quality = parseInt(document.getElementById('convertImageQuality').value);
+
+            try {
+                const formData = new FormData();
+                formData.append('file', convertImageFile.file);
+                formData.append('target_format', targetFormat);
+                formData.append('quality', quality);
+
+                const progressSection = document.getElementById('progressSection');
+                progressSection.classList.add('active');
+                progressSection.style.display = 'block';
+                document.getElementById('progressList').innerHTML = `
+                    <div class="progress-item">
+                        <div class="progress-filename">🖼️ Converting ${convertImageFile.name} to ${targetFormat.toUpperCase()}...</div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar" style="width: 100%;"></div>
+                        </div>
+                        <div class="progress-text">Processing...</div>
+                    </div>
+                `;
+
+                const response = await fetch(`${API_BASE}/api/convert-image-format`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || data.detail || 'Conversion failed');
+                }
+
+                if (data.success) {
+                    progressSection.classList.remove('active');
+                    const resultsSection = document.getElementById('resultsSection');
+                    const resultList = document.getElementById('resultList');
+                    
+                    const formatInfo = data.format_info || {};
+                    const infoText = formatInfo.description ? `<br><small style="opacity: 0.7;">${formatInfo.description}</small>` : '';
+                    
+                    resultList.innerHTML = `
+                        <div class="result-item">
+                            <div>
+                                <div class="result-name">🖼️ ${convertImageFile.name} → ${data.target_format}</div>
+                                <div class="result-stats">
+                                    ${formatFileSize(data.original_size)} → ${formatFileSize(data.converted_size)} | 
+                                    ${data.compression_ratio >= 0 ? 'Reduced by ' + data.compression_ratio.toFixed(1) + '%' : 'Size increased by ' + Math.abs(data.compression_ratio).toFixed(1) + '%'}
+                                    ${infoText}
+                                </div>
+                            </div>
+                            <a href="${API_BASE}${data.download_url}" download class="download-btn">⬇️ Download</a>
+                        </div>
+                    `;
+                    resultsSection.classList.add('active');
+                    showSuccess(`✅ Image converted to ${data.target_format} successfully!`);
+                    clearConvertImage();
+                }
+            } catch (error) {
+                document.getElementById('progressSection').classList.remove('active');
+                showError(`Failed to convert image: ${error.message}`);
+            }
+        }
+
+        // Resize Image Functions
+        function handleResizeFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                resizeFile = {
+                    name: file.name,
+                    size: file.size,
+                    file: file,
+                    id: Math.random().toString(36).substr(2, 9)
+                };
+                displayResizeFile();
+            }
+        }
+
+        function displayResizeFile() {
+            const fileList = document.getElementById('resizeFileList');
+            if (!resizeFile) {
+                fileList.innerHTML = '';
+                return;
+            }
+            const sizeInMB = (resizeFile.size / (1024 * 1024)).toFixed(2);
+            fileList.innerHTML = `
+                <div class="file-item">
+                    <div class="file-name">
+                        <div class="file-name-text">🖼️ ${resizeFile.name}</div>
+                        <div class="file-size">${sizeInMB} MB</div>
+                    </div>
+                    <button class="remove-btn" onclick="clearResize()">Remove</button>
+                </div>
+            `;
+        }
+
+        function clearResize() {
+            resizeFile = null;
+            document.getElementById('resizeFileInput').value = '';
+            document.getElementById('resizeWidth').value = '';
+            document.getElementById('resizeHeight').value = '';
+            document.getElementById('resizeFileList').innerHTML = '';
+        }
+
+        async function resizeImage() {
+            if (!resizeFile) {
+                showError('Please select an image file');
+                return;
+            }
+
+            const width = parseInt(document.getElementById('resizeWidth').value);
+            const height = parseInt(document.getElementById('resizeHeight').value);
+            const maintainAspect = document.getElementById('maintainAspect').checked;
+
+            if (!width && !height) {
+                showError('Please specify width or height (or both)');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                formData.append('file', resizeFile.file);
+                if (width) formData.append('width', width);
+                if (height) formData.append('height', height);
+                formData.append('maintain_aspect', maintainAspect);
+
+                const progressSection = document.getElementById('progressSection');
+                progressSection.classList.add('active');
+                progressSection.style.display = 'block';
+                document.getElementById('progressList').innerHTML = `
+                    <div class="progress-item">
+                        <div class="progress-filename">🖼️ ${resizeFile.name}</div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar" style="width: 100%;"></div>
+                        </div>
+                        <div class="progress-text">Processing...</div>
+                    </div>
+                `;
+
+                const response = await fetch(`${API_BASE}/api/resize-image`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || data.detail || 'Resize failed');
+                }
+
+                if (data.success) {
+                    progressSection.classList.remove('active');
+                    const resultsSection = document.getElementById('resultsSection');
+                    const resultList = document.getElementById('resultList');
+                    resultList.innerHTML = `
+                        <div class="result-item">
+                            <div>
+                                <div class="result-name">🖼️ ${resizeFile.name}</div>
+                                <div class="result-stats">
+                                    Resized to ${data.width || 'auto'}x${data.height || 'auto'} | 
+                                    ${formatFileSize(data.original_size)} → ${formatFileSize(data.compressed_size)}
+                                </div>
+                            </div>
+                            <a href="${API_BASE}${data.download_url}" download class="download-btn">⬇️ Download</a>
+                        </div>
+                    `;
+                    resultsSection.classList.add('active');
+                    showSuccess('✅ Image resized successfully!');
+                    clearResize();
+                }
+            } catch (error) {
+                document.getElementById('progressSection').classList.remove('active');
+                showError(`Failed to resize image: ${error.message}`);
+            }
+        }
+
+        // Merge PDF Functions
+        function handleMergePdfFileSelect(event) {
+            for (let file of event.target.files) {
+                if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                    mergePdfFiles.push({
+                        name: file.name,
+                        size: file.size,
+                        file: file,
+                        id: Math.random().toString(36).substr(2, 9)
+                    });
+                }
+            }
+            displayMergePdfFiles();
+        }
+
+        function displayMergePdfFiles() {
+            const fileList = document.getElementById('mergePdfFileList');
+            fileList.innerHTML = '';
+            mergePdfFiles.forEach((file, index) => {
+                const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <div class="file-name">
+                        <div class="file-name-text">📄 ${file.name}</div>
+                        <div class="file-size">${sizeInMB} MB</div>
+                    </div>
+                    <button class="remove-btn" onclick="removeMergePdfFile(${index})">Remove</button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        function removeMergePdfFile(index) {
+            mergePdfFiles.splice(index, 1);
+            displayMergePdfFiles();
+        }
+
+        function clearMergePdf() {
+            mergePdfFiles = [];
+            document.getElementById('mergePdfFileInput').value = '';
+            document.getElementById('mergePdfFileList').innerHTML = '';
+        }
+
+        async function mergePdfs() {
+            if (mergePdfFiles.length < 2) {
+                showError('Please select at least 2 PDF files to merge');
+                return;
+            }
+
+            try {
+                const formData = new FormData();
+                mergePdfFiles.forEach(fileObj => {
+                    formData.append('files', fileObj.file);
+                });
+
+                const progressSection = document.getElementById('progressSection');
+                progressSection.classList.add('active');
+                progressSection.style.display = 'block';
+                document.getElementById('progressList').innerHTML = `
+                    <div class="progress-item">
+                        <div class="progress-filename">📄 Merging ${mergePdfFiles.length} PDF files...</div>
+                        <div class="progress-bar-bg">
+                            <div class="progress-bar" style="width: 100%;"></div>
+                        </div>
+                        <div class="progress-text">Processing...</div>
+                    </div>
+                `;
+
+                const response = await fetch(`${API_BASE}/api/merge-pdfs`, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || data.detail || 'Merge failed');
+                }
+
+                if (data.success) {
+                    progressSection.classList.remove('active');
+                    const resultsSection = document.getElementById('resultsSection');
+                    const resultList = document.getElementById('resultList');
+                    resultList.innerHTML = `
+                        <div class="result-item">
+                            <div>
+                                <div class="result-name">📄 Merged PDF (${data.files_merged} files)</div>
+                                <div class="result-stats">
+                                    ${formatFileSize(data.total_original_size)} → ${formatFileSize(data.merged_size)}
+                                </div>
+                            </div>
+                            <a href="${API_BASE}${data.download_url}" download class="download-btn">⬇️ Download</a>
+                        </div>
+                    `;
+                    resultsSection.classList.add('active');
+                    showSuccess(`✅ Successfully merged ${data.files_merged} PDF files!`);
+                    clearMergePdf();
+                }
+            } catch (error) {
+                document.getElementById('progressSection').classList.remove('active');
+                showError(`Failed to merge PDFs: ${error.message}`);
+            }
+        }
+
+        // Compress Image Preset Function
+        async function compressImagePreset() {
+            if (files.length === 0) {
+                showError('Please select at least one image file');
+                return;
+            }
+
+            const preset = document.getElementById('compressPreset').value;
+            const progressSection = document.getElementById('progressSection');
+            const progressList = document.getElementById('progressList');
+            progressList.innerHTML = '';
+            progressSection.classList.add('active');
+
+            const results = [];
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const ext = file.name.split('.').pop().toLowerCase();
+                if (!['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'tiff', 'tif'].includes(ext)) {
+                    continue; // Skip non-image files
+                }
+
+                const progressItem = document.createElement('div');
+                progressItem.id = `progress-${file.id}`;
+                progressItem.className = 'progress-item';
+                progressItem.innerHTML = `
+                    <div class="progress-filename">🖼️ ${file.name}</div>
+                    <div class="progress-bar-bg">
+                        <div class="progress-bar"></div>
+                    </div>
+                    <div class="progress-text">Compressing with ${preset} preset...</div>
+                `;
+                progressList.appendChild(progressItem);
+
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file.file);
+                    formData.append('preset', preset);
+
+                    const response = await fetch(`${API_BASE}/api/compress-image-preset`, {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || data.detail || 'Compression failed');
+                    }
+
+                    if (data.success) {
+                        results.push(data);
+                        const progressBar = document.querySelector(`#progress-${file.id} .progress-bar`);
+                        if (progressBar) progressBar.style.width = '100%';
+                        const progressText = document.querySelector(`#progress-${file.id} .progress-text`);
+                        if (progressText) {
+                            progressText.textContent = `Completed (${data.compression_ratio.toFixed(1)}% reduction)`;
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error compressing ${file.name}:`, error);
+                    showError(`Failed to compress ${file.name}: ${error.message}`);
+                }
+            }
+
+            if (results.length > 0) {
+                progressSection.classList.remove('active');
+                const resultsSection = document.getElementById('resultsSection');
+                const resultList = document.getElementById('resultList');
+                resultList.innerHTML = results.map(result => `
+                    <div class="result-item">
+                        <div>
+                            <div class="result-name">🖼️ ${result.filename}</div>
+                            <div class="result-stats">
+                                ${formatFileSize(result.original_size)} → ${formatFileSize(result.compressed_size)} | 
+                                Reduced by ${result.compression_ratio.toFixed(1)}% (${result.preset} preset)
+                            </div>
+                        </div>
+                        <a href="${API_BASE}${result.download_url}" download class="download-btn">⬇️ Download</a>
+                    </div>
+                `).join('');
+                resultsSection.classList.add('active');
+                showSuccess(`✅ Compressed ${results.length} image(s) with ${preset} preset!`);
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+        }
+
+        // Add drag and drop for convert image, resize and merge PDF
+        const convertImageDropZone = document.getElementById('convertImageDropZone');
+        if (convertImageDropZone) {
+            convertImageDropZone.addEventListener('dragover', (e) => { e.preventDefault(); convertImageDropZone.classList.add('dragover'); });
+            convertImageDropZone.addEventListener('dragleave', () => { convertImageDropZone.classList.remove('dragover'); });
+            convertImageDropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                convertImageDropZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    document.getElementById('convertImageFileInput').files = e.dataTransfer.files;
+                    handleConvertImageFileSelect({ target: { files: e.dataTransfer.files } });
+                }
+            });
+        }
+
+        const resizeDropZone = document.getElementById('resizeDropZone');
+        if (resizeDropZone) {
+            resizeDropZone.addEventListener('dragover', (e) => { e.preventDefault(); resizeDropZone.classList.add('dragover'); });
+            resizeDropZone.addEventListener('dragleave', () => { resizeDropZone.classList.remove('dragover'); });
+            resizeDropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                resizeDropZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    document.getElementById('resizeFileInput').files = e.dataTransfer.files;
+                    handleResizeFileSelect({ target: { files: e.dataTransfer.files } });
+                }
+            });
+        }
+
+        const mergePdfDropZone = document.getElementById('mergePdfDropZone');
+        if (mergePdfDropZone) {
+            mergePdfDropZone.addEventListener('dragover', (e) => { e.preventDefault(); mergePdfDropZone.classList.add('dragover'); });
+            mergePdfDropZone.addEventListener('dragleave', () => { mergePdfDropZone.classList.remove('dragover'); });
+            mergePdfDropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                mergePdfDropZone.classList.remove('dragover');
+                handleMergePdfFileSelect({ target: { files: e.dataTransfer.files } });
+            });
         }
     </script>
 </body>

@@ -1,47 +1,33 @@
-# requirements.txt - All Dependencies for Universal File Conversion Suite
+# requirements.txt - Dependencies for Universal File Compression Suite
 
-# Web Framework
+# Web Framework (Required)
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
+pydantic>=2.0.0
 
-# Document Processing
-python-docx==0.8.11
-python-pptx==0.6.21
-openpyxl==3.11.0
-pandas==2.1.2
-pypdf==3.17.1
-reportlab==4.0.7
-pandoc==2.3
+# Image Processing (Required for image conversion)
+Pillow>=10.1.0
 
-# Image Processing
-Pillow==10.1.0
-opencv-python==4.8.1.78
-imageio==2.33.1
-imageio-ffmpeg==1.4.1
+# Document Processing (Optional - for DOCX support)
+python-docx>=0.8.11
 
-# Audio/Video Processing
-ffmpeg-python==0.2.1
-moviepy==1.0.3
-pydub==0.25.1
+# PDF Processing (Optional - for PDF operations)
+pypdf>=3.17.0
 
-# Text & OCR
-pytesseract==0.3.10
-easyocr==1.7.0
-markdown==3.5.1
+# Archive Handling (Optional - for 7Z support)
+py7zr>=0.20.8
 
-# Data Processing
-pyyaml==6.0.1
-openpyxl==3.11.0
-lxml==4.9.3
+# Note: The following are system packages and must be installed separately:
+# - FFmpeg: Required for audio/video conversion
+#   Install: apt-get install ffmpeg (Ubuntu/Debian) or brew install ffmpeg (macOS)
+# - Pandoc: Optional for advanced document conversion
+#   Install: apt-get install pandoc (Ubuntu/Debian) or brew install pandoc (macOS)
 
-# Archive Handling
-rarfile==4.1
-py7zr==0.20.8
+# PDF Processing (Optional - for PDF merge operations)
+pypdf>=3.17.0
 
-# System & Utilities
-psutil==5.9.6
-python-dotenv==1.0.0
-
-# Type Checking
-python-magic==0.4.27
+# Optional dependencies (commented out - uncomment if needed)
+# python-pptx>=0.6.21          # For PowerPoint support
+# openpyxl>=3.11.0             # For Excel support
+# pandas>=2.1.2                # For data processing
