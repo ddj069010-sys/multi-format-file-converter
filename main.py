@@ -475,9 +475,15 @@ async def merge_pdfs(pdf_files: list[Path], output_path: Path) -> bool:
                 logger.warning(f"PDF file not found: {pdf_file}")
                 continue
             
-            reader = PdfReader(str(pdf_file))
-            for page in reader.pages:
-                writer.add_page(page)
+            try:
+                reader = PdfReader(str(pdf_file))
+                for page in reader.pages:
+                    writer.add_page(page)
+            except Exception as e:
+                logger.error(f"Error reading PDF {pdf_file}: {e}")
+                # Don't fail entire batch, but maybe warn? 
+                # For safety, if one fails, the merge is incomplete.
+                raise ValueError(f"Corrupt or invalid PDF file: {pdf_file.name}")
         
         if len(writer.pages) == 0:
             logger.error("No pages to merge")
@@ -498,56 +504,88 @@ async def convert_document(input_path: Path, output_path: Path, format_type: str
     try:
         format_lower = format_type.lower()
         
-        if format_lower == 'pdf':
-            if input_path.suffix.lower() == '.pdf':
-                shutil.copy2(input_path, output_path)
-                return True
-            elif PANDOC_AVAILABLE:
-                try:
-                    result = subprocess.run(
-                        ['pandoc', str(input_path), '-o', str(output_path)],
-                        capture_output=True,
-                        timeout=30,
-                        text=True
-                    )
-                    if result.returncode == 0:
-                        logger.info("📄 Document converted to PDF using pandoc")
-                        return True
-                except Exception as e:
-                    logger.warning(f"Pandoc conversion failed: {e}")
-            
-            # Fallback: text extraction
-            with open(input_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-            # Simple text to "PDF-like" output
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            logger.info(f"📄 Document converted to PDF (fallback)")
+        # Pandoc supported formats map
+        pandoc_formats = {
+            'pdf': 'pdf',
+            'docx': 'docx',
+            'odt': 'odt',
+            'html': 'html',
+            'rtf': 'rtf',
+            'epub': 'epub',
+            'txt': 'plain',
+            'text': 'plain',
+            'md': 'markdown',
+            'markdown': 'markdown'
+        }
+
+        # Helper: Copy if same format
+        if input_path.suffix.lower() == f".{format_lower}" or \
+           (format_lower in ['txt', 'text'] and input_path.suffix.lower() == '.txt'):
+            shutil.copy2(input_path, output_path)
             return True
-            
-        elif format_lower in ['txt', 'text']:
-            with open(input_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read()
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(content)
-            logger.info(f"📝 Document converted to TXT")
-            return True
+
+        # 1. Try Pandoc (Preferred for documents)
+        if PANDOC_AVAILABLE and format_lower in pandoc_formats:
+            try:
+                target_pandoc_fmt = pandoc_formats[format_lower]
+                cmd = ['pandoc', str(input_path), '-o', str(output_path)]
+                
+                # Add destination format if not PDF (pandoc infers PDF from extension usually, but being explicit is good)
+                if format_lower != 'pdf':
+                    cmd.extend(['-t', target_pandoc_fmt])
+                
+                logger.debug(f"Running pandoc command: {' '.join(cmd)}")
+                
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    timeout=60,
+                    text=True
+                )
+                
+                if result.returncode == 0:
+                    logger.info(f"📄 Document converted to {format_type.upper()} using pandoc")
+                    return True
+                else:
+                    logger.warning(f"Pandoc conversion failed ({result.returncode}): {result.stderr}")
+            except subprocess.TimeoutExpired:
+                 logger.error("Pandoc conversion timed out")
+            except Exception as e:
+                logger.warning(f"Pandoc execution error: {e}")
+
+        # 2. Format Specific Fallbacks
         
-        elif format_lower == 'docx' and DOCX_AVAILABLE and input_path.suffix.lower() in ['.txt', '.rtf']:
+        # TXT/Text extraction Fallback
+        if format_lower in ['txt', 'text']:
+            try:
+                # Naively read text
+                with open(input_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                logger.info(f"📝 Document converted to TXT (fallback)")
+                return True
+            except Exception as e:
+                logger.warning(f"Text fallback failed: {e}")
+
+        # DOCX Fallback using python-docx (Only works if creating FROM text usually)
+        if format_lower == 'docx' and DOCX_AVAILABLE and input_path.suffix.lower() in ['.txt', '.md']:
             try:
                 doc = docx.Document()
                 with open(input_path, 'r', encoding='utf-8', errors='ignore') as f:
                     doc.add_paragraph(f.read())
                 doc.save(output_path)
-                logger.info("📝 Document converted to DOCX")
+                logger.info("📝 Document converted to DOCX (python-docx fallback)")
                 return True
             except Exception as e:
                 logger.warning(f"DOCX conversion failed: {e}")
         
-        # Default: copy file
-        shutil.copy2(input_path, output_path)
-        logger.info(f"📋 Document format: {format_type}")
-        return True
+        # 3. Last Resort: Copy ONLY if we are sure it's safe. 
+        # Copying source to random extension is bad practice and corrupts files.
+        # We return False to indicate failure.
+        
+        logger.error(f"❌ Could not convert {input_path.suffix} to {format_type}")
+        return False
         
     except Exception as e:
         logger.error(f"❌ Document conversion failed: {str(e)}")
